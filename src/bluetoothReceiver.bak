@@ -1,0 +1,20 @@
+#include <Arduino.h>
+#include "BluetoothSerial.h"  // ESP32 Bluetooth Library
+
+BluetoothSerial SerialBT;  // Create Bluetooth Serial Object
+
+void setup() {
+    Serial.begin(115200);  // Monitor ESP32 output
+    SerialBT.begin("Porygon-X");  // Name of ESP32 Bluetooth device
+    Serial.println("Bluetooth Started! Waiting for connection...");
+}
+
+void loop() {
+    if (SerialBT.available()) {  // Check if data is received
+        String receivedData = SerialBT.readStringUntil('\n');  // Read joystick input
+        receivedData.trim();  // Remove spaces/newlines
+
+        Serial.print("Received: ");
+        Serial.println(receivedData);
+    }
+}

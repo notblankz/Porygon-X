@@ -1,18 +1,20 @@
 #include <Arduino.h>
+#include "BluetoothSerial.h"
 
-// put function declarations here:
-int myFunction(int, int);
+BluetoothSerial SerialBT;
 
 void setup() {
-  // put your setup code here, to run once:
-  int result = myFunction(2, 3);
+    Serial.begin(115200);
+    SerialBT.begin("Porygon-X");
+    Serial.println("Bluetooth Started! Waiting for connection...");
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-}
+    if (SerialBT.available()) {  // Check if data is received
+        String receivedData = SerialBT.readStringUntil('\n');
+        receivedData.trim();
 
-// put function definitions here:
-int myFunction(int x, int y) {
-  return x + y;
+        Serial.print("Received: ");
+        Serial.println(receivedData);
+    }
 }
