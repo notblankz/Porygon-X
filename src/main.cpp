@@ -2,12 +2,13 @@
 #include "BluetoothSerial.h"
 #include "WiFi.h"
 
-const char *ssid = "SSID";
-const char *password = "PASSWORD";
+const char *ssid = "oneplus";
+const char *password = "hahahaha";
 
 BluetoothSerial SerialBT;
 
-void setup() {
+void setup()
+{
     Serial.begin(115200);
     SerialBT.begin("Porygon-X");
     Serial.println("Bluetooth Started! Waiting for connection...");
@@ -15,9 +16,10 @@ void setup() {
     // connecting to WiFi
     WiFi.begin(ssid, password);
     Serial.print("Connecting to WiFi");
-    while (WiFi.status()!= WL_CONNECTED) {
+    while (WiFi.status() != WL_CONNECTED)
+    {
         delay(500);
-        Serial.print(".");
+        Serial.print(WiFi.status());
     }
 
     Serial.println("Connected to WiFi");
@@ -25,8 +27,10 @@ void setup() {
     Serial.println(WiFi.localIP());
 }
 
-void loop() {
-    if (SerialBT.available()) {  // Check if data is received
+void loop()
+{
+    if (SerialBT.available())
+    { // Check if data is received
         String receivedData = SerialBT.readStringUntil('\n');
         receivedData.trim();
 
