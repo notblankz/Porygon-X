@@ -68,9 +68,6 @@ void loop()
     {
         String receivedData = SerialBT.readStringUntil('\n');
         receivedData.trim();
-        digitalWrite(LED_PIN, HIGH);
-        delay(500);
-        digitalWrite(LED_PIN, LOW);
-        delay(1000);
+        Serial.println(receivedData);
     }
 }
