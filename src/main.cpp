@@ -19,7 +19,7 @@ void setup()
     while (WiFi.status() != WL_CONNECTED)
     {
         delay(500);
-        Serial.print(WiFi.status());
+        Serial.print(".");
     }
 
     Serial.println("Connected to WiFi");

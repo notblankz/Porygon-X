@@ -1,0 +1,27 @@
+{
+  "name": "pid-website",
+  "version": "1.0.0",
+  "description": "A simple website to control the values of PID Control loop for Porygon-X",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/notblankz/Porygon-X.git"
+  },
+  "author": "Aahan, Aman",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/notblankz/Porygon-X/issues"
+  },
+  "homepage": "https://github.com/notblankz/Porygon-X#readme",
+  "dependencies": {
+    "axios": "^1.8.4",
+    "body-parser": "^1.20.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "ejs": "^3.1.10",
+    "express": "^4.21.2"
+  }
+}
