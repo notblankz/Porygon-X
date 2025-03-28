@@ -63,33 +63,32 @@ void registerESP()
     http.end();
 }
 
-void handleUpdatePID(AsyncWebServerRequest *request)
+void handleUpdatePID(AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total)
 {
-    if (request->hasParam("body", true))
+    Serial.println("Received PID Update Request");
+
+    String jsonStr = "";
+    for (size_t i = 0; i < len; i++)
     {
-        const AsyncWebParameter *p = request->getParam("body", true);
-        String jsonStr = p->value();
+        jsonStr += (char)data[i];
+    }
+    Serial.println("Received JSON: " + jsonStr);
 
-        StaticJsonDocument<200> jsonDoc;
-        DeserializationError error = deserializeJson(jsonDoc, jsonStr);
+    StaticJsonDocument<200> jsonDoc;
+    DeserializationError error = deserializeJson(jsonDoc, jsonStr);
 
-        if (!error)
-        {
-            float Kp = jsonDoc["Kp"];
-            float Ki = jsonDoc["Ki"];
-            float Kd = jsonDoc["Kd"];
+    if (!error)
+    {
+        float Kp = jsonDoc["Kp"];
+        float Ki = jsonDoc["Ki"];
+        float Kd = jsonDoc["Kd"];
 
-            Serial.printf("Updated PID Values -> Kp: %.2f, Ki: %.2f, Kd: %.2f\n", Kp, Ki, Kd);
-            request->send(200, "application/json", "{\"message\":\"PID updated\"}");
-        }
-        else
-        {
-            request->send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
-        }
+        Serial.printf("Updated PID Values -> Kp: %.2f, Ki: %.2f, Kd: %.2f\n", Kp, Ki, Kd);
+        request->send(200, "application/json", "{\"message\":\"PID updated\"}");
     }
     else
     {
-        request->send(400, "application/json", "{\"error\":\"No body received\"}");
+        request->send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
     }
 }
 
@@ -133,14 +132,12 @@ void setup()
 
     registerESP();
 
-    server.on("/updatePID", HTTP_POST, [](AsyncWebServerRequest *request){ 
-        handleUpdatePID(request); 
-    });
+    server.on("/updatePID", HTTP_POST, [](AsyncWebServerRequest *request) {}, NULL, handleUpdatePID);
+
     server.begin();
 
-    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){ 
-        request->send(200, "text/plain", "Hello, world"); 
-    });
+    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
+              { request->send(200, "text/plain", "Hello, world"); });
 }
 
 void loop()
