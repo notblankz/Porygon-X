@@ -36,17 +36,17 @@
     <h1>PID Controller</h1>
 
     <div class="slider-container">
-        <label>Kp: <span id="pValue"><%= Kp %></span></label><br>
+        <label>P: <span id="pValue"><%= Kp %></span></label><br>
         <input type="range" id="pSlider" min="0" max="10" step="0.1" value="<%= Kp %>" oninput="updateValue('pValue', this.value)">
     </div>
 
     <div class="slider-container">
-        <label>Ki: <span id="iValue"><%= Ki %></span></label><br>
+        <label>I: <span id="iValue"><%= Ki %></span></label><br>
         <input type="range" id="iSlider" min="0" max="10" step="0.1" value="<%= Ki %>" oninput="updateValue('iValue', this.value)">
     </div>
 
     <div class="slider-container">
-        <label>Kd: <span id="dValue"><%= Kd %></span></label><br>
+        <label>D: <span id="dValue"><%= Kd %></span></label><br>
         <input type="range" id="dSlider" min="0" max="10" step="0.1" value="<%= Kd %>" oninput="updateValue('dValue', this.value)">
     </div>
 

@@ -19,7 +19,7 @@ app.post("/registerESP", (req, res) => {
 
     esp32IP = recv_IP;
     pidValues = { Kp: old_Kp, Ki: old_Ki, Kd: old_Kd };
-    console.log(`ESP32 Registered: ${esp32IP} | PID: Kp=${Kp}, Ki=${Ki}, Kd=${Kd}`);
+    console.log(`ESP32 Registered: ${esp32IP} | PID: Kp=${pidValues.Kp}, Ki=${pidValues.Ki}, Kd=${pidValues.Kd}`);
 
     res.render("index", pidValues)
 })
