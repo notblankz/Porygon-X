@@ -2,21 +2,64 @@
 #include "BluetoothSerial.h"
 #include "WiFi.h"
 #include "../lib/secrets.h"
-#include "HTTPClient.h"
-#include "ESPAsyncWebServer.h"
-#include "ArduinoJson.h"
-#include "AsyncJson.h"
+#include <HTTPClient.h>
+#include <ESPAsyncWebServer.h>
+#include <ArduinoJson.h>
+#include <AsyncJson.h>
+#include <Preferences.h>
 
 const int LED_PIN = 2;
 
 const char *ssid = WIFI_SSID;
 const char *password = WIFI_PASSWORD;
+const String serverURL = WEBSITE_URL;
+
+struct PIDValues {
+    float Kp;
+    float Ki;
+    float Kd;
+};
 
 BluetoothSerial SerialBT;
 AsyncWebServer server(80);
+Preferences preferences;
 
-void customBlink()
-{
+PIDValues readPIDValues() {
+    preferences.begin("PID", true);
+
+    PIDValues pid;
+    pid.Kp = preferences.getFloat("Kp", 1.0);
+    pid.Ki = preferences.getFloat("Ki", 0.1);
+    pid.Kd = preferences.getFloat("Kd", 0.01);
+
+    preferences.end();
+    return pid;
+}
+
+
+void savePIDValues(float newKp, float newKi, float newKd) {
+    preferences.begin("PID", false);
+
+    preferences.putFloat("Kp", newKp);
+    preferences.putFloat("Ki", newKi);
+    preferences.putFloat("Kd", newKd);
+
+    preferences.end();
+}
+
+
+void updatePIDValues(float newKp, float newKi, float newKd) {
+    PIDValues oldPID = readPIDValues();
+
+    if (oldPID.Kp != newKp || oldPID.Ki != newKi || oldPID.Kd != newKd) {
+        Serial.printf("Updated PID Values -> Kp: %.2f, Ki: %.2f, Kd: %.2f\n", newKp, newKi, newKd);
+        savePIDValues(newKp, newKi, newKd);
+    } else {
+        Serial.println("No change in PID Values required");
+    }
+}
+
+void customBlink() {
     digitalWrite(LED_PIN, HIGH);
     delay(500);
     digitalWrite(LED_PIN, LOW);
@@ -31,31 +74,32 @@ void customBlink()
     delay(200);
 }
 
-void registerESP()
-{
+void registerESP() {
     WiFiClient client;
     HTTPClient http;
 
-    String serverUrl = "http://192.168.133.91:3000/registerESP"; // Replace with actual server IP
-    http.begin(client, serverUrl);
+    if (!http.begin(client, serverURL)) {
+        Serial.println("HTTP Connection failed!");
+        return;
+    }
     http.addHeader("Content-Type", "application/json");
 
     StaticJsonDocument<200> jsonDoc;
     jsonDoc["recv_IP"] = WiFi.localIP().toString();
-    jsonDoc["old_Kp"] = 1.0; // Replace with stored values if available
-    jsonDoc["old_Ki"] = 1.0;
-    jsonDoc["old_Kd"] = 1.0;
+    PIDValues pid = readPIDValues();
+    jsonDoc["old_Kp"] = pid.Kp;
+    jsonDoc["old_Ki"] = pid.Ki;
+    jsonDoc["old_Kd"] = pid.Kd;
 
     String requestBody;
     serializeJson(jsonDoc, requestBody);
 
     int httpResponseCode = http.POST(requestBody);
-    if (httpResponseCode > 0)
-    {
-        Serial.println("ESP32 registered successfully");
+    if (httpResponseCode > 0) {
+        // Serial.println("ESP32 Registered Successfully");
+        Serial.printf("\nESP32 Registered: %s | PID: Kp=%.2f, Ki=%.2f, Kd=%.2f", WiFi.localIP().toString().c_str(), pid.Kp, pid.Ki, pid.Kd);
     }
-    else
-    {
+    else {
         Serial.println("Error in ESP32 registration");
         Serial.println(httpResponseCode);
     }
@@ -63,13 +107,11 @@ void registerESP()
     http.end();
 }
 
-void handleUpdatePID(AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total)
-{
+void handleUpdatePID(AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
     Serial.println("Received PID Update Request");
 
     String jsonStr = "";
-    for (size_t i = 0; i < len; i++)
-    {
+    for (size_t i = 0; i < len; i++) {
         jsonStr += (char)data[i];
     }
     Serial.println("Received JSON: " + jsonStr);
@@ -77,23 +119,23 @@ void handleUpdatePID(AsyncWebServerRequest *request, uint8_t *data, size_t len, 
     StaticJsonDocument<200> jsonDoc;
     DeserializationError error = deserializeJson(jsonDoc, jsonStr);
 
-    if (!error)
-    {
-        float Kp = jsonDoc["Kp"];
-        float Ki = jsonDoc["Ki"];
-        float Kd = jsonDoc["Kd"];
+    if (!error) {
+        float newKp = jsonDoc["Kp"];
+        float newKi = jsonDoc["Ki"];
+        float newKd = jsonDoc["Kd"];
 
-        Serial.printf("Updated PID Values -> Kp: %.2f, Ki: %.2f, Kd: %.2f\n", Kp, Ki, Kd);
+        updatePIDValues(newKp, newKi, newKd);
+
+        customBlink();
+
         request->send(200, "application/json", "{\"message\":\"PID updated\"}");
     }
-    else
-    {
+    else {
         request->send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
     }
 }
 
-void setup()
-{
+void setup() {
 
     pinMode(LED_PIN, OUTPUT);
 
@@ -114,8 +156,7 @@ void setup()
 
     WiFi.begin(ssid, password);
     Serial.print("Connecting to WiFi");
-    while (WiFi.status() != WL_CONNECTED)
-    {
+    while (WiFi.status() != WL_CONNECTED) {
         delay(500);
         Serial.print(".");
     }
@@ -140,8 +181,7 @@ void setup()
               { request->send(200, "text/plain", "Hello, world"); });
 }
 
-void loop()
-{
+void loop() {
     if (SerialBT.available())
     {
         String receivedData = SerialBT.readStringUntil('\n');
