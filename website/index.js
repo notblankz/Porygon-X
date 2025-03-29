@@ -30,7 +30,7 @@ app.post("/registerESP", (req, res) => {
     `ESP32 Registered: ${esp32IP} | PID: Kp=${pidValues.Kp}, Ki=${pidValues.Ki}, Kd=${pidValues.Kd}`
   );
 
-  res.render("index", pidValues);
+  return res.render("index", pidValues);
 });
 
 app.post("/updatePID", async (req, res) => {
