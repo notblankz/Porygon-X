@@ -165,11 +165,6 @@ void setup() {
     customBlink();
     Serial.print("\nESP32 IP Address: ");
     Serial.println(WiFi.localIP());
-    Serial.print("Gateway IP: ");
-    Serial.println(WiFi.gatewayIP());
-
-    Serial.println("Bluetooth Started! Waiting for connection...");
-    SerialBT.begin("Porygon-X");
 
     registerESP();
 
@@ -177,8 +172,8 @@ void setup() {
 
     server.begin();
 
-    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
-              { request->send(200, "text/plain", "Hello, world"); });
+    Serial.println("\nBluetooth Started! Waiting for connection...");
+    SerialBT.begin("Porygon-X");
 }
 
 void loop() {
