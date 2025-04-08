@@ -8,7 +8,7 @@ PIDValues readPIDValues() {
     preferences.begin("PID", true);
     PIDValues pid;
     pid.Kp = preferences.getFloat("Kp", 1.0);
-    pid.Ki = preferences.getFloat("Ki", 0.1);
+    pid.Ki = preferences.getFloat("Ki", 0.01);
     pid.Kd = preferences.getFloat("Kd", 0.01);
     preferences.end();
     return pid;

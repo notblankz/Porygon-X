@@ -4,5 +4,6 @@
 #include <Arduino.h>
 
 void customBlink();
+void mpuCalibratingBlink();
 
 #endif
