@@ -15,6 +15,8 @@
 #define STEP_PIN 27
 #define DIR_PIN_2 25
 #define STEP_PIN_2 26
+#define RESET 13
+#define SLEEP 12
 
 // MPU6050 Object
 MPU6050 mpu(Wire);
@@ -57,6 +59,12 @@ void setup() {
     pinMode(STEP_PIN, OUTPUT);
     pinMode(DIR_PIN_2, OUTPUT);
     pinMode(STEP_PIN_2, OUTPUT);
+    pinMode(RESET, OUTPUT);
+    pinMode(SLEEP, OUTPUT);
+
+    // ---- Enable the stepper motors ----
+    digitalWrite(RESET, HIGH);
+    digitalWrite(SLEEP, HIGH);
 
     // ---- MPU6050 Stuff ----
     Wire.begin();
