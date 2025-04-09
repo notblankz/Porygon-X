@@ -29,3 +29,23 @@ void mpuCalibratingBlink() {
     delay(1000);
     digitalWrite(LED_PIN, LOW);
 }
+
+void mpuCalibrationCompleteBlink() {
+    const int LED_PIN = 2;
+
+    for (int i = 0; i < 3; i++) {
+        digitalWrite(LED_PIN, HIGH);
+        delay(100);
+        digitalWrite(LED_PIN, LOW);
+        delay(100);
+    }
+
+    delay(300);
+
+    for (int i = 0; i < 2; i++) {
+        digitalWrite(LED_PIN, HIGH);
+        delay(400);
+        digitalWrite(LED_PIN, LOW);
+        delay(200);
+    }
+}

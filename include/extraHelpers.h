@@ -5,5 +5,6 @@
 
 void customBlink();
 void mpuCalibratingBlink();
+void mpuCalibrationCompleteBlink();
 
 #endif

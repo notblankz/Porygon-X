@@ -80,6 +80,8 @@ void setup() {
     // Calibrate MPU6050
     mpu.calcOffsets(true, true);
 
+    mpuCalibrationCompleteBlink();
+
     // ---- PID Controller Stuff ----
     myPID.SetMode(AUTOMATIC);
     myPID.SetOutputLimits(-10000, 10000);
