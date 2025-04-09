@@ -1,3 +1,6 @@
+// Self-Balancing code and algorithm inspired by H0W3
+// Source: https://github.com/H0W3/Self-Balancing-Robot-PID
+
 #include <Arduino.h>
 #include "BluetoothSerial.h"
 #include "WiFi.h"
