@@ -70,7 +70,7 @@ void setup() {
     digitalWrite(SLEEP, HIGH);
 
     // ---- MPU6050 Stuff ----
-    Wire.begin();
+    Wire.begin(21,22);
     byte status = mpu.begin();
     while (status != 0) {
         Serial.println("MPU6050 connection failed");
@@ -122,7 +122,10 @@ void pidLoop(void *parameter) {
 
               // ---- Update MPU6050 angle ----
               mpu.update();
+              delay(1);
               double angle = mpu.getAngleX();  // Read the X-axis angle
+
+              if (abs(angle) > 50) { continue; }
 
               // ---- Smoothening the value, since MPU6050 gives a shaky reading ----
               static double smoothedAngle = 0.0;
