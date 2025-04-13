@@ -36,7 +36,7 @@ PID myPID(&input, &output, &setpoint, pid.Kp, pid.Ki, pid.Kd, DIRECT);
 
 // Timing Variables
 unsigned long lastPIDUpdate = 0;
-const unsigned long PIDInterval = 15; // PID runs every 15 seconds
+const unsigned long PIDInterval = 10;
 
 // Stepper variables
 int motorSpeed = 0;
@@ -51,6 +51,7 @@ void pidLoop(void *parameter);
 void motorControl();
 
 const int LED_PIN = 2;
+String btInputBuffer = "";
 BluetoothSerial SerialBT;
 AsyncWebServer server(80);
 
@@ -71,6 +72,7 @@ void setup() {
 
     // ---- MPU6050 Stuff ----
     Wire.begin(21,22);
+    Wire.setClock(400000);
     byte status = mpu.begin();
     while (status != 0) {
         Serial.println("MPU6050 connection failed");
@@ -105,10 +107,25 @@ void setup() {
 }
 
 void loop() {
-    if (SerialBT.available()) {
-        String receivedData = SerialBT.readStringUntil('\n');
-        receivedData.trim();
-        Serial.println(receivedData);
+    // if (SerialBT.available()) {
+    //     String receivedData = SerialBT.readStringUntil('\n');
+    //     receivedData.trim();
+    //     Serial.println(receivedData);
+    // }
+
+    while (SerialBT.available()) {
+        char c = SerialBT.read();
+
+        if (c == '\n') {
+            int commaIdx = btInputBuffer.indexOf(",");
+            if (commaIdx == -1) continue;
+            int x = btInputBuffer.substring(0, commaIdx).toInt();
+            int y = btInputBuffer.substring(commaIdx + 1).toInt();
+            Serial.printf("Joystick: x=%d :: y=%d\n", x, y);
+            btInputBuffer = "";
+        } else {
+            btInputBuffer += c;
+        }
     }
 
     motorControl();
