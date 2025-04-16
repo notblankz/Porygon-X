@@ -2,6 +2,7 @@
 #include "../include/extraHelpers.h"
 #include "../include/register.h"
 #include <PID_v1.h>
+#include <Preferences.h>
 
 Preferences preferences;
 extern PID myPID;
@@ -29,7 +30,7 @@ void updatePIDValues(float newKp, float newKi, float newKd) {
     if (oldPID.Kp != newKp || oldPID.Ki != newKi || oldPID.Kd != newKd) {
         Serial.printf("Updated PID Values -> Kp: %.2f, Ki: %.2f, Kd: %.2f\n", newKp, newKi, newKd);
         savePIDValues(newKp, newKi, newKd);
-        myPID.SetTunings(newKp, newKi, newKi);
+        myPID.SetTunings(newKp, newKi, newKd);
     } else {
         Serial.println("No change in PID Values required");
     }

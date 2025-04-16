@@ -12,10 +12,11 @@
 #include <PID_v1.h>
 #include <Wire.h>
 #include <MPU6050_light.h>
+#include <Preferences.h>
 
 // Stepper Motor pins
-#define DIR_PIN 14
-#define STEP_PIN 27
+#define DIR_PIN 27
+#define STEP_PIN 14
 #define DIR_PIN_2 25
 #define STEP_PIN_2 26
 #define RESET 13
@@ -28,11 +29,8 @@ MPU6050 mpu(Wire);
 double setpoint = 0;
 double input, output;
 
-// PID Gain control variables
-PIDValues pid = readPIDValues();
-
 // PID Controller object
-PID myPID(&input, &output, &setpoint, pid.Kp, pid.Ki, pid.Kd, DIRECT);
+PID myPID(&input, &output, &setpoint, 0.0, 0.0, 0.0, DIRECT);
 
 // Timing Variables
 unsigned long lastPIDUpdate = 0;
@@ -58,6 +56,10 @@ AsyncWebServer server(80);
 void setup() {
     Serial.begin(115200);
 
+    // PID Gain control variables
+    PIDValues pid = readPIDValues();
+    Serial.printf("Boot PID: Kp=%.2f, Ki=%.2f, Kd=%.2f\n", pid.Kp, pid.Ki, pid.Kd);
+
     pinMode(LED_PIN, OUTPUT);
     pinMode(DIR_PIN, OUTPUT);
     pinMode(STEP_PIN, OUTPUT);
@@ -65,6 +67,10 @@ void setup() {
     pinMode(STEP_PIN_2, OUTPUT);
     pinMode(RESET, OUTPUT);
     pinMode(SLEEP, OUTPUT);
+
+    digitalWrite(LED_PIN, HIGH);
+    delay(10000);
+    digitalWrite(LED_PIN, LOW);
 
     // ---- Enable the stepper motors ----
     digitalWrite(RESET, HIGH);
@@ -90,6 +96,8 @@ void setup() {
     // ---- PID Controller Stuff ----
     myPID.SetMode(AUTOMATIC);
     myPID.SetOutputLimits(-10000, 10000);
+    myPID.SetTunings(pid.Kp, pid.Ki, pid.Kd);
+    myPID.SetSampleTime(10);
 
     // --- Pin pidLoop() to always run on core 0
     xTaskCreatePinnedToCore(pidLoop, "PID Task", 10000, NULL, 2, &pidTaskHandle, 0);
@@ -140,7 +148,7 @@ void pidLoop(void *parameter) {
               // ---- Update MPU6050 angle ----
               mpu.update();
               delay(1);
-              double angle = mpu.getAngleX();  // Read the X-axis angle
+              double angle = mpu.getAngleY();  // Read the X-axis angle
 
               if (abs(angle) > 50) { continue; }
 
@@ -165,8 +173,16 @@ void pidLoop(void *parameter) {
               }
 
               // ---- Debug prints ----
-              Serial.print("Angle: ");
+              Serial.print("P: ");
+              Serial.print(myPID.GetKp());
+              Serial.print(" I: ");
+              Serial.print(myPID.GetKi());
+              Serial.print(" D: ");
+              Serial.print(myPID.GetKd());
+              Serial.print(" Angle: ");
               Serial.print(smoothedAngle);
+              Serial.print(" PID Computed Output: ");
+              Serial.print(output);
               Serial.print(" Motor Speed: ");
               Serial.println(motorSpeed);
         }
