@@ -29,7 +29,7 @@ MPU6050 mpu(Wire);
 double setpoint = 0;
 double input, output;
 
-// PID Controller object
+// Define PID Controller Object in Global Scope
 PID myPID(&input, &output, &setpoint, 0.0, 0.0, 0.0, DIRECT);
 
 // Timing Variables
@@ -148,9 +148,7 @@ void pidLoop(void *parameter) {
               // ---- Update MPU6050 angle ----
               mpu.update();
               delay(1);
-              double angle = mpu.getAngleY();  // Read the X-axis angle
-
-              if (abs(angle) > 50) { continue; }
+              double angle = mpu.getAngleY();
 
               // ---- Smoothening the value, since MPU6050 gives a shaky reading ----
               static double smoothedAngle = 0.0;
