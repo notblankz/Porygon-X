@@ -37,17 +37,17 @@
 
     <div class="slider-container">
         <label>P: <span id="pValue"><%= Kp %></span></label><br>
-        <input type="range" id="pSlider" min="0" max="1000" step="0.1" value="<%= Kp %>" oninput="updateValue('pValue', this.value)">
+        <input type="range" id="pSlider" min="0" max="1000" step="10" value="<%= Kp %>" oninput="updateValue('pValue', this.value)">
     </div>
 
     <div class="slider-container">
         <label>I: <span id="iValue"><%= Ki %></span></label><br>
-        <input type="range" id="iSlider" min="0" max="100" step="0.01" value="<%= Ki %>" oninput="updateValue('iValue', this.value)">
+        <input type="range" id="iSlider" min="0" max="100" step="1" value="<%= Ki %>" oninput="updateValue('iValue', this.value)">
     </div>
 
     <div class="slider-container">
         <label>D: <span id="dValue"><%= Kd %></span></label><br>
-        <input type="range" id="dSlider" min="0" max="100" step="0.01" value="<%= Kd %>" oninput="updateValue('dValue', this.value)">
+        <input type="range" id="dSlider" min="0" max="100" step="1" value="<%= Kd %>" oninput="updateValue('dValue', this.value)">
     </div>
 
     <button onclick="sendPID()">Send</button>
