@@ -22,6 +22,10 @@
 #define RESET 13
 #define SLEEP 12
 
+#define MS1 5
+#define MS2 18
+#define MS3 19
+
 // MPU6050 Object
 MPU6050 mpu(Wire);
 
@@ -45,7 +49,7 @@ unsigned long lastStepTime2 = 0;
 TaskHandle_t pidTaskHandle;
 
 // Function prototypes
-void pidLoop(void *parameter);
+void pidLoop(void* parameter);
 void motorControl();
 
 const int LED_PIN = 2;
@@ -56,7 +60,7 @@ AsyncWebServer server(80);
 void setup() {
     Serial.begin(115200);
 
-    // PID Gain control variables
+    // Get stored PID Gain control variables
     PIDValues pid = readPIDValues();
     Serial.printf("Boot PID: Kp=%.2f, Ki=%.2f, Kd=%.2f\n", pid.Kp, pid.Ki, pid.Kd);
 
@@ -67,6 +71,13 @@ void setup() {
     pinMode(STEP_PIN_2, OUTPUT);
     pinMode(RESET, OUTPUT);
     pinMode(SLEEP, OUTPUT);
+    pinMode(MS1, OUTPUT);
+    pinMode(MS2, OUTPUT);
+    pinMode(MS3, OUTPUT);
+
+    digitalWrite(MS1, HIGH);
+    digitalWrite(MS2, HIGH);
+    digitalWrite(MS3, HIGH);
 
     digitalWrite(LED_PIN, HIGH);
     delay(10000);
@@ -77,7 +88,7 @@ void setup() {
     digitalWrite(SLEEP, HIGH);
 
     // ---- MPU6050 Stuff ----
-    Wire.begin(21,22);
+    Wire.begin(21, 22);
     Wire.setClock(400000);
     byte status = mpu.begin();
     while (status != 0) {
@@ -95,7 +106,7 @@ void setup() {
 
     // ---- PID Controller Stuff ----
     myPID.SetMode(AUTOMATIC);
-    myPID.SetOutputLimits(-10000, 10000);
+    myPID.SetOutputLimits(-12000, 12000);
     myPID.SetTunings(pid.Kp, pid.Ki, pid.Kd);
     myPID.SetSampleTime(10);
 
@@ -106,7 +117,7 @@ void setup() {
     // ---- Connect to WiFi and register ESP32 to backend
     connectWiFi();
     registerESP();
-    server.on("/updatePID", HTTP_POST, [](AsyncWebServerRequest *request) {}, NULL, handleUpdatePID);
+    server.on("/updatePID", HTTP_POST, [](AsyncWebServerRequest* request) {}, NULL, handleUpdatePID);
     server.begin();
 
     // ---- Start and connect to bluetooh remote ----
@@ -126,12 +137,14 @@ void loop() {
 
         if (c == '\n') {
             int commaIdx = btInputBuffer.indexOf(",");
-            if (commaIdx == -1) continue;
+            if (commaIdx == -1)
+                continue;
             int x = btInputBuffer.substring(0, commaIdx).toInt();
             int y = btInputBuffer.substring(commaIdx + 1).toInt();
             Serial.printf("Joystick: x=%d :: y=%d\n", x, y);
             btInputBuffer = "";
-        } else {
+        }
+        else {
             btInputBuffer += c;
         }
     }
@@ -139,55 +152,68 @@ void loop() {
     motorControl();
 }
 
-void pidLoop(void *parameter) {
+void pidLoop(void* parameter) {
     while (true) {
         unsigned long currentMillis = millis();
         if (currentMillis - lastPIDUpdate >= PIDInterval) {
-              lastPIDUpdate = currentMillis;
+            lastPIDUpdate = currentMillis;
 
-              // ---- Update MPU6050 angle ----
-              mpu.update();
-              delay(1);
-              double angle = mpu.getAngleY();
+            // ---- Update MPU6050 angle ----
+            mpu.update();
+            delay(1);
+            double angle = mpu.getAngleY();
 
-              // ---- Smoothening the value, since MPU6050 gives a shaky reading ----
-              static double smoothedAngle = 0.0;
-              smoothedAngle += 0.3 * (angle - smoothedAngle);
+            // ---- Smoothening the value, since MPU6050 gives a shaky reading ----
+            static double smoothedAngle = 0.0;
+            smoothedAngle += 0.3 * (angle - smoothedAngle);
 
-              // ---- Update the input with the new angle and compute the PID output ----
-              input = smoothedAngle;
-              myPID.Compute();
+            // ---- Update the input with the new angle and compute the PID output ----
+            input = smoothedAngle;
+            myPID.Compute();
 
-              // ---- Case the float output into int ----
-              motorSpeed = (int)output;
+            // ---- Case the float output into int ----
+            if (abs(smoothedAngle) < 0.4) {
+                output = 0;
+                motorSpeed = 0;
+                Serial.println("Angle within deadzone, no PID compute");
+                continue;
+            }
 
-              // ---- Set directions for the motor; if motorSpeed == +ive -> move forward else backword ----
-              if (motorSpeed > 0) {
-                  digitalWrite(DIR_PIN, HIGH);
-                  digitalWrite(DIR_PIN_2, HIGH);
-              } else if (motorSpeed < 0) {
-                  digitalWrite(DIR_PIN, LOW);
-                  digitalWrite(DIR_PIN_2, LOW);
-              }
+            // --- Apply a low-pass filter to the output in order to avoid jitters on low angles ----
+            static int prevSpeed = 0;
+            // !--- If Angle of bot is >= 30 degrees, then use the entire output values since we need higher motor speeds ---!
+            double alpha = constrain((abs(smoothedAngle) / 30.0), 0.2, 1.0);
+            motorSpeed = prevSpeed + (output - prevSpeed) * alpha;
+            prevSpeed = motorSpeed;
 
-              // ---- Debug prints ----
-              Serial.print("P: ");
-              Serial.print(myPID.GetKp());
-              Serial.print(" I: ");
-              Serial.print(myPID.GetKi());
-              Serial.print(" D: ");
-              Serial.print(myPID.GetKd());
-              Serial.print(" Angle: ");
-              Serial.print(smoothedAngle);
-              Serial.print(" PID Computed Output: ");
-              Serial.print(output);
-              Serial.print(" Motor Speed: ");
-              Serial.println(motorSpeed);
+            // ---- Set directions for the motor; if motorSpeed == +ive -> move forward else backword ----
+            if (motorSpeed > 0) {
+                digitalWrite(DIR_PIN, HIGH);
+                digitalWrite(DIR_PIN_2, HIGH);
+            }
+            else if (motorSpeed < 0) {
+                digitalWrite(DIR_PIN, LOW);
+                digitalWrite(DIR_PIN_2, LOW);
+            }
+
+            // ---- Debug prints ----
+            Serial.print("P: ");
+            Serial.print(myPID.GetKp());
+            Serial.print(" I: ");
+            Serial.print(myPID.GetKi());
+            Serial.print(" D: ");
+            Serial.print(myPID.GetKd());
+            Serial.print(" Angle: ");
+            Serial.print(smoothedAngle);
+            Serial.print(" PID Computed Output: ");
+            Serial.print(output);
+            Serial.print(" Motor Speed: ");
+            Serial.println(motorSpeed);
         }
 
         delay(1);
-      }
-  }
+    }
+}
 
 void motorControl() {
     // ---- Control the motor pulses ----
@@ -197,7 +223,7 @@ void motorControl() {
         if (micros() - lastStepTime1 >= stepInterval1) {
             lastStepTime1 = micros();
             digitalWrite(STEP_PIN, HIGH);
-            delayMicroseconds(2);  // default pulse width according to A4988 Datasheets
+            delayMicroseconds(2); // default pulse width according to A4988 Datasheets
             digitalWrite(STEP_PIN, LOW);
         }
     }
@@ -208,7 +234,7 @@ void motorControl() {
         if (micros() - lastStepTime2 >= stepInterval2) {
             lastStepTime2 = micros();
             digitalWrite(STEP_PIN_2, HIGH);
-            delayMicroseconds(2);  // default pulse width according to A4988 Datasheets
+            delayMicroseconds(2); // default pulse width according to A4988 Datasheets
             digitalWrite(STEP_PIN_2, LOW);
         }
     }
