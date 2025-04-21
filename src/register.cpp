@@ -7,6 +7,8 @@ const char *ssid = WIFI_SSID;
 const char *password = WIFI_PASSWORD;
 const String serverURL = WEBSITE_URL;
 
+extern bool isWiFiConnected;
+
 void connectWiFi() {
     WiFi.begin(ssid, password);
     Serial.print("Connecting to WiFi");
@@ -15,6 +17,7 @@ void connectWiFi() {
         Serial.print(".");
     }
     Serial.println("\nConnected to WiFi");
+    isWiFiConnected = true;
     customBlink();
     Serial.print("\nESP32 IP Address: ");
     Serial.println(WiFi.localIP());

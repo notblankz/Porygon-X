@@ -32,6 +32,10 @@ MPU6050 mpu(Wire);
 // PID Variables
 double setpoint = 0;
 double input, output;
+int joystickY = 512;
+int joystickX = 512;
+bool isWiFiConnected = false;
+bool isBTConnected = false;
 
 // Define PID Controller Object in Global Scope
 PID myPID(&input, &output, &setpoint, 0.0, 0.0, 0.0, DIRECT);
@@ -39,6 +43,7 @@ PID myPID(&input, &output, &setpoint, 0.0, 0.0, 0.0, DIRECT);
 // Timing Variables
 unsigned long lastPIDUpdate = 0;
 const unsigned long PIDInterval = 10;
+const int LED_PIN = 2;
 
 // Stepper variables
 int motorSpeed = 0;
@@ -49,10 +54,10 @@ unsigned long lastStepTime2 = 0;
 TaskHandle_t pidTaskHandle;
 
 // Function prototypes
-void pidLoop(void* parameter);
+void pidLoop(void*);
+void debugPrints(int, int, double, double, double, double, int, int);
 void motorControl();
 
-const int LED_PIN = 2;
 String btInputBuffer = "";
 BluetoothSerial SerialBT;
 AsyncWebServer server(80);
@@ -126,26 +131,21 @@ void setup() {
 }
 
 void loop() {
-    // if (SerialBT.available()) {
-    //     String receivedData = SerialBT.readStringUntil('\n');
-    //     receivedData.trim();
-    //     Serial.println(receivedData);
-    // }
+    if (SerialBT.available()) {
 
-    while (SerialBT.available()) {
-        char c = SerialBT.read();
+        isBTConnected = true;
 
-        if (c == '\n') {
-            int commaIdx = btInputBuffer.indexOf(",");
-            if (commaIdx == -1)
-                continue;
-            int x = btInputBuffer.substring(0, commaIdx).toInt();
-            int y = btInputBuffer.substring(commaIdx + 1).toInt();
-            Serial.printf("Joystick: x=%d :: y=%d\n", x, y);
-            btInputBuffer = "";
-        }
-        else {
-            btInputBuffer += c;
+        String receivedData = SerialBT.readStringUntil('\n');
+        receivedData.trim();
+
+        int commaIndex = receivedData.indexOf(',');
+        if (commaIndex != -1) {
+            String xStr = receivedData.substring(0, commaIndex);
+            String yStr = receivedData.substring(commaIndex + 1);
+
+            joystickX = xStr.toInt();
+            joystickY = yStr.toInt();
+
         }
     }
 
@@ -169,13 +169,26 @@ void pidLoop(void* parameter) {
 
             // ---- Update the input with the new angle and compute the PID output ----
             input = smoothedAngle;
+
+            // ---- Take the joystick Y values and lean the robot a bit front or a bit back ----
+            if (joystickY > 1000) {
+                setpoint = 4;
+            }
+            else if (joystickY < 50) {
+                setpoint = -4;
+            }
+            else {
+                setpoint *= 0.5;
+                if (abs(setpoint) < 1) setpoint = 0;
+            }
+
             myPID.Compute();
 
             // ---- Case the float output into int ----
             if (abs(smoothedAngle) < 0.4) {
                 output = 0;
                 motorSpeed = 0;
-                Serial.println("Angle within deadzone, no PID compute");
+                debugPrints(joystickX, joystickY, myPID.GetKp(), myPID.GetKi(), myPID.GetKd(), smoothedAngle, output, motorSpeed);
                 continue;
             }
 
@@ -196,24 +209,38 @@ void pidLoop(void* parameter) {
                 digitalWrite(DIR_PIN_2, LOW);
             }
 
-            // ---- Debug prints ----
-            Serial.print("P: ");
-            Serial.print(myPID.GetKp());
-            Serial.print(" I: ");
-            Serial.print(myPID.GetKi());
-            Serial.print(" D: ");
-            Serial.print(myPID.GetKd());
-            Serial.print(" Angle: ");
-            Serial.print(smoothedAngle);
-            Serial.print(" PID Computed Output: ");
-            Serial.print(output);
-            Serial.print(" Motor Speed: ");
-            Serial.println(motorSpeed);
+            debugPrints(joystickX, joystickY, myPID.GetKp(), myPID.GetKi(), myPID.GetKd(), smoothedAngle, output, motorSpeed);
+
         }
 
         delay(1);
     }
 }
+
+void debugPrints(int joystickX, int joystickY, double P, double I, double D, double smoothedAngle, int output, int motorspeed) {
+    if (isWiFiConnected && isBTConnected) {
+        // ---- Debug prints ----
+        Serial.print("JoystickX: ");
+        Serial.print(joystickX);
+        Serial.print(" JoystickY: ");
+        Serial.print(joystickY);
+        Serial.print(" P: ");
+        Serial.print(myPID.GetKp());
+        Serial.print(" I: ");
+        Serial.print(myPID.GetKi());
+        Serial.print(" D: ");
+        Serial.print(myPID.GetKd());
+        Serial.print(" Setpoint: ");
+        Serial.print(setpoint);
+        Serial.print(" Angle: ");
+        Serial.print(smoothedAngle);
+        Serial.print(" PID Computed Output: ");
+        Serial.print(output);
+        Serial.print(" Motor Speed: ");
+        Serial.println(motorSpeed);
+    }
+}
+
 
 void motorControl() {
     // ---- Control the motor pulses ----
