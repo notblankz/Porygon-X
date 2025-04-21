@@ -13,6 +13,7 @@
 #include <Wire.h>
 #include <MPU6050_light.h>
 #include <Preferences.h>
+#include <AccelStepper.h>
 
 // Stepper Motor pins
 #define DIR_PIN 27
@@ -22,12 +23,11 @@
 #define RESET 13
 #define SLEEP 12
 
-#define MS1 5
-#define MS2 18
-#define MS3 19
-
 // MPU6050 Object
 MPU6050 mpu(Wire);
+
+AccelStepper Stepper1(AccelStepper::DRIVER, STEP_PIN, DIR_PIN);
+AccelStepper Stepper2(AccelStepper::DRIVER, STEP_PIN_2, DIR_PIN_2);
 
 // PID Variables
 double setpoint = 0;
@@ -71,13 +71,6 @@ void setup() {
     pinMode(STEP_PIN_2, OUTPUT);
     pinMode(RESET, OUTPUT);
     pinMode(SLEEP, OUTPUT);
-    pinMode(MS1, OUTPUT);
-    pinMode(MS2, OUTPUT);
-    pinMode(MS3, OUTPUT);
-
-    digitalWrite(MS1, HIGH);
-    digitalWrite(MS2, HIGH);
-    digitalWrite(MS3, HIGH);
 
     digitalWrite(LED_PIN, HIGH);
     delay(10000);
@@ -98,10 +91,8 @@ void setup() {
     Serial.println("MPU6050 Initialized successfully");
 
     mpuCalibratingBlink();
-
     // Calibrate MPU6050
     mpu.calcOffsets(true, true);
-
     mpuCalibrationCompleteBlink();
 
     // ---- PID Controller Stuff ----
@@ -109,6 +100,12 @@ void setup() {
     myPID.SetOutputLimits(-12000, 12000);
     myPID.SetTunings(pid.Kp, pid.Ki, pid.Kd);
     myPID.SetSampleTime(10);
+
+    // Stepper Init
+    Stepper1.setMaxSpeed(12000);
+    Stepper2.setMaxSpeed(12000);
+    Stepper1.setAcceleration(6000);
+    Stepper2.setAcceleration(6000);
 
     // --- Pin pidLoop() to always run on core 0
     xTaskCreatePinnedToCore(pidLoop, "PID Task", 10000, NULL, 2, &pidTaskHandle, 0);
@@ -149,7 +146,12 @@ void loop() {
         }
     }
 
-    motorControl();
+    // Stepper1.runSpeed();
+    // Stepper2.runSpeed();
+    // or
+    Stepper1.run();
+    Stepper2.run();
+
 }
 
 void pidLoop(void* parameter) {
@@ -172,10 +174,12 @@ void pidLoop(void* parameter) {
             myPID.Compute();
 
             // ---- Case the float output into int ----
-            if (abs(smoothedAngle) < 0.4) {
+            if (abs(smoothedAngle) < 0.6) {
                 output = 0;
                 motorSpeed = 0;
                 Serial.println("Angle within deadzone, no PID compute");
+                Stepper1.setSpeed(0);
+                Stepper2.setSpeed(0);
                 continue;
             }
 
@@ -186,15 +190,8 @@ void pidLoop(void* parameter) {
             motorSpeed = prevSpeed + (output - prevSpeed) * alpha;
             prevSpeed = motorSpeed;
 
-            // ---- Set directions for the motor; if motorSpeed == +ive -> move forward else backword ----
-            if (motorSpeed > 0) {
-                digitalWrite(DIR_PIN, HIGH);
-                digitalWrite(DIR_PIN_2, HIGH);
-            }
-            else if (motorSpeed < 0) {
-                digitalWrite(DIR_PIN, LOW);
-                digitalWrite(DIR_PIN_2, LOW);
-            }
+            Stepper1.setSpeed(motorSpeed);
+            Stepper2.setSpeed(motorSpeed);
 
             // ---- Debug prints ----
             Serial.print("P: ");
@@ -212,30 +209,5 @@ void pidLoop(void* parameter) {
         }
 
         delay(1);
-    }
-}
-
-void motorControl() {
-    // ---- Control the motor pulses ----
-    if (abs(motorSpeed) > 0) {
-        // ---- Calculate the required interval between each pulse ----
-        unsigned long stepInterval1 = 1000000 / abs(motorSpeed);
-        if (micros() - lastStepTime1 >= stepInterval1) {
-            lastStepTime1 = micros();
-            digitalWrite(STEP_PIN, HIGH);
-            delayMicroseconds(2); // default pulse width according to A4988 Datasheets
-            digitalWrite(STEP_PIN, LOW);
-        }
-    }
-
-    if (abs(motorSpeed) > 0) {
-        // ---- Calculate the required interval between each pulse ----
-        unsigned long stepInterval2 = 1000000 / abs(motorSpeed);
-        if (micros() - lastStepTime2 >= stepInterval2) {
-            lastStepTime2 = micros();
-            digitalWrite(STEP_PIN_2, HIGH);
-            delayMicroseconds(2); // default pulse width according to A4988 Datasheets
-            digitalWrite(STEP_PIN_2, LOW);
-        }
     }
 }
